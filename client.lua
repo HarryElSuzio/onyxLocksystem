@@ -33,7 +33,7 @@ function playLockAnim(vehicle)
         Citizen.Wait(0)
     end
 
-    if not IsPedInAnyVehicle(GetPlayerPed(-1), true) then
+    if not IsPedInAnyVehicle(PlayerPedId(), true) then
         TaskPlayAnim(PlayerPedId(), dict, "fob_click_fp", 8.0, 8.0, -1, 48, 1, false, false, false)
     end
 end
@@ -64,7 +64,7 @@ function toggleLock(vehicle)
             playLockAnim()
             hasToggledLock()
         end
-        if not IsPedInAnyVehicle(GetPlayerPed(-1), true) then
+        if not IsPedInAnyVehicle(PlayerPedId(), true) then
             Wait(500)
             local flickers = 0
             while flickers < 2 do
@@ -87,12 +87,12 @@ end)
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
-        local pos = GetEntityCoords(GetPlayerPed(-1))
         if IsControlJustReleased(0, 303) then
-            if IsPedInAnyVehicle(GetPlayerPed(-1), false) then
-                local veh = GetVehiclePedIsIn(GetPlayerPed(-1), false)
+            if IsPedInAnyVehicle(PlayerPedId(), false) then
+                local veh = GetVehiclePedIsIn(PlayerPedId(), false)
                 toggleLock(veh)
             else
+                local pos = GetEntityCoords(PlayerPedId())
                 local veh = GetClosestVehicle(pos.x, pos.y, pos.z, 3.0, 0, 70)
                 if DoesEntityExist(veh) then
                     toggleLock(veh)
@@ -101,7 +101,7 @@ Citizen.CreateThread(function()
         end
 
         -- TODO: Unable to gain access to vehicles without a lockpick or keys
-        -- local enteringVeh = GetVehiclePedIsTryingToEnter(GetPlayerPed(-1))
+        -- local enteringVeh = GetVehiclePedIsTryingToEnter(PlayerPedId())
         -- local enteringPlate = GetVehicleNumberPlateText(enteringVeh)
 
         -- if not hasKeys(entertingPlate) then
@@ -117,12 +117,13 @@ local isHotwiring = false
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
-        local ped = GetPlayerPed(-1)
+        local ped = PlayerPedId()
         if IsPedInAnyVehicle(ped, false) then
             local veh = GetVehiclePedIsIn(ped)
             local driver = GetPedInVehicleSeat(veh, -1)
             local plate = GetVehicleNumberPlateText(veh)
             if driver == ped then
+                local plate = GetVehicleNumberPlateText(veh)
                 if not hasKeys(plate) and not isHotwiring and not isSearching then
                     local pos = GetEntityCoords(ped)
                     if hasBeenSearched(plate) then
@@ -172,15 +173,16 @@ Citizen.CreateThread(function()
     end
 end)
 
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(0)
-        if isHotwiring then
-            DisableControlAction(0, 75, true)  -- Disable exit vehicle
-            DisableControlAction(0, 74, true)  -- Lights
-        end
-    end
-end)
+function disableControls()
+	Citizen.CreateThread(function()
+	    while isHotwiring do
+		Citizen.Wait(0)
+		DisableControlAction(0, 75, true)  -- Disable exit vehicle
+		DisableControlAction(0, 74, true)  -- Lights
+	    end
+	end)
+end
+
 
 RegisterNetEvent('onyx:updatePlates')
 AddEventHandler('onyx:updatePlates', function(plate)
@@ -189,7 +191,7 @@ end)
 
 RegisterNetEvent('onyx:beginHotwire')
 AddEventHandler('onyx:beginHotwire', function(plate)
-    local veh = GetVehiclePedIsIn(GetPlayerPed(-1), false)
+    local veh = GetVehiclePedIsIn(PlayerPedId(), false)
     RequestAnimDict("veh@std@ds@base")
 
     while not HasAnimDictLoaded("veh@std@ds@base") do
@@ -199,7 +201,7 @@ AddEventHandler('onyx:beginHotwire', function(plate)
 
     local vehPlate = plate
     isHotwiring = true
-
+    disableControls()
     SetVehicleEngineOn(veh, false, true, true)
     SetVehicleLights(veh, 0)
     
